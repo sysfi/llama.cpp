@@ -1369,7 +1369,7 @@ int main(int argc, char **argv)
         llama_reset_timings(llama.ctx);
         llama.params.prompt = body.value("content", "");
         llama.params.n_predict = 0;
-        llama.loadPrompt();
+        // llama.loadPrompt();
         // llama.beginCompletion();
         // llama.doCompletion();
 
