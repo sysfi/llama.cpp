@@ -584,7 +584,8 @@ struct llama_server_context
 
     std::vector<float> getLogits()
     {
-        std::vector<float> logits = llama_get_logits(ctx);
+        auto logits  = llama_get_logits(ctx);
+        // int numVocab = llama_n_vocab(ctx);
         return logits;
     }
 
