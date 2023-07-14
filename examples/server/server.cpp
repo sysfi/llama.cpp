@@ -1001,7 +1001,7 @@ static json format_embedding_response(llama_server_context &llama)
 
 static json format_logits_response(llama_server_context &llama)
 {
-    llama.perplexity()
+    llama.perplexity();
     return json{
         {"logits", "test"},
     };
