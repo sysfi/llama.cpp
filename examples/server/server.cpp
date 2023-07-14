@@ -582,6 +582,12 @@ struct llama_server_context
         return token_with_probs;
     }
 
+    std::vector<float> getLogits()
+    {
+        std::vector<float> logits = llama_get_logits(ctx);
+        return logits;
+    }
+
     std::vector<float> getEmbedding()
     {
         static const int n_embd = llama_n_embd(ctx);
@@ -904,6 +910,13 @@ static json format_embedding_response(llama_server_context &llama)
 {
     return json{
         {"embedding", llama.getEmbedding()},
+    };
+}
+
+static json format_logits_response(llama_server_context &llama)
+{
+    return json{
+        {"logits", llama.getLogits()},
     };
 }
 
@@ -1260,6 +1273,23 @@ int main(int argc, char **argv)
         llama.doCompletion();
 
         const json data = format_embedding_response(llama);
+        return res.set_content(data.dump(), "application/json"); });
+
+    svr.Post("/logits", [&llama](const Request &req, Response &res)
+             {
+        auto lock = llama.lock();
+
+        const json body = json::parse(req.body);
+
+        llama.rewind();
+        llama_reset_timings(llama.ctx);
+        llama.params.prompt = body.value("content", "");
+        llama.params.n_predict = 0;
+        llama.loadPrompt();
+        llama.beginCompletion();
+        llama.doCompletion();
+
+        const json data = format_logits_response(llama);
         return res.set_content(data.dump(), "application/json"); });
 
     svr.set_logger(log_server_request);
