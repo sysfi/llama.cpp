@@ -582,7 +582,7 @@ struct llama_server_context
         return token_with_probs;
     }
 
-    std::vector<float> getLogits()
+    auto getLogits()
     {
         auto logits  = llama_get_logits(ctx);
         // int numVocab = llama_n_vocab(ctx);
