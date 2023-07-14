@@ -1370,8 +1370,8 @@ int main(int argc, char **argv)
         llama.params.prompt = body.value("content", "");
         llama.params.n_predict = 0;
         llama.loadPrompt();
-        llama.beginCompletion();
-        llama.doCompletion();
+        // llama.beginCompletion();
+        // llama.doCompletion();
 
         const json data = format_logits_response(llama);
         return res.set_content(data.dump(), "application/json"); });
