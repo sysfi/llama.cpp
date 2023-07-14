@@ -599,75 +599,30 @@ struct llama_server_context
     }
 
     double perplexity() {
-        auto tokens = ::llama_tokenize(ctx, params.prompt, true);
+        int count = 0;
 
-        int count   = 0;
-
-        const int n_chunk = tokens.size() / params.n_ctx;
         const int n_vocab = llama_n_vocab(ctx);
         const int n_batch = params.n_batch;
 
         double nll = 0.0;
         double perplexity_value = 0.0;
 
-        for (int i = 0; i < n_chunk; ++i) {
-            const int start =     i * params.n_ctx;
-            const int end   = start + params.n_ctx;
+        std::vector<float> logits;
+        logits.insert(llama_get_logits(ctx));
 
-            const int num_batches = (params.n_ctx + n_batch - 1) / n_batch;
+        for (int j = 0; j < params.n_ctx - 1; ++j) {
+            // Calculate probability of next token, given the previous ones.
+            const std::vector<float> tok_logits(
+                logits.begin() + (j + 0) * n_vocab,
+                logits.begin() + (j + 1) * n_vocab);
 
-            std::vector<float> logits;
+            const float prob = softmax(tok_logits)[tokens[j + 1]];
 
-            const auto t_start = std::chrono::high_resolution_clock::now();
-
-            for (int j = 0; j < num_batches; ++j) {
-                const int batch_start = start + j * n_batch;
-                const int batch_size  = std::min(end - batch_start, n_batch);
-
-                // save original token and restore it after eval
-                const auto token_org = tokens[batch_start];
-
-                // add BOS token for the first batch of each chunk
-                if (j == 0) {
-                    tokens[batch_start] = llama_token_bos();
-                }
-
-                if (llama_eval(ctx, tokens.data() + batch_start, batch_size, j * n_batch, params.n_threads)) {
-                    return -1;
-                }
-
-                // restore the original token in case it was set to BOS
-                tokens[batch_start] = token_org;
-
-                const auto batch_logits = llama_get_logits(ctx);
-                logits.insert(logits.end(), batch_logits, batch_logits + batch_size * n_vocab);
-            }
-
-            const auto t_end = std::chrono::high_resolution_clock::now();
-
-            if (i == 0) {
-                const float t_total = std::chrono::duration<float>(t_end - t_start).count();
-                int total_seconds = (int)(t_total * n_chunk);
-                if (total_seconds >= 60*60) {
-                    fprintf(stderr, "%d hours ", total_seconds / (60*60));
-                    total_seconds = total_seconds % (60*60);
-                }
-            }
-
-            for (int j = 0; j < params.n_ctx - 1; ++j) {
-                // Calculate probability of next token, given the previous ones.
-                const std::vector<float> tok_logits(
-                    logits.begin() + (j + 0) * n_vocab,
-                    logits.begin() + (j + 1) * n_vocab);
-
-                const float prob = softmax(tok_logits)[tokens[start + j + 1]];
-
-                nll += -std::log(prob);
-                ++count;
-            }
-            // perplexity is e^(average negative log-likelihood)
-            perplexity_value = std::exp(nll / count);
+            nll += -std::log(prob);
+            ++count;
         }
+        // perplexity is e^(average negative log-likelihood)
+        perplexity_value = std::exp(nll / count);
         return perplexity_value;
     }
 
