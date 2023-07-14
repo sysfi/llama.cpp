@@ -183,6 +183,8 @@ struct llama_server_context
     std::string generated_text;
     std::vector<completion_token_output> generated_token_probs;
 
+    std::vector<llama_token> prompt_tokens;
+
     size_t num_prompt_tokens = 0;
     size_t num_tokens_predicted = 0;
     size_t n_past = 0;
@@ -227,6 +229,7 @@ struct llama_server_context
     {
         params.antiprompt.clear();
         num_prompt_tokens = 0;
+        prompt_tokens.clear();
         num_tokens_predicted = 0;
         generated_text = "";
         generated_text.reserve(params.n_ctx);
@@ -260,7 +263,7 @@ struct llama_server_context
     void loadPrompt()
     {
         params.prompt.insert(0, 1, ' '); // always add a first space
-        std::vector<llama_token> prompt_tokens = ::llama_tokenize(ctx, params.prompt, true);
+        prompt_tokens = ::llama_tokenize(ctx, params.prompt, true);
         num_prompt_tokens = prompt_tokens.size();
 
         if (params.n_keep < 0)
@@ -616,7 +619,7 @@ struct llama_server_context
                 logits.begin() + (j + 0) * n_vocab,
                 logits.begin() + (j + 1) * n_vocab);
 
-            const float prob = softmax(tok_logits)[tokens[j + 1]];
+            const float prob = softmax(tok_logits)[prompt_tokens[j + 1]];
 
             nll += -std::log(prob);
             ++count;
