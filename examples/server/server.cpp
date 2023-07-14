@@ -607,8 +607,8 @@ struct llama_server_context
         double nll = 0.0;
         double perplexity_value = 0.0;
 
-        std::vector<float> logits;
-        logits.insert(llama_get_logits(ctx));
+        const float *data = llama_get_logits(ctx);
+        std::vector<float> logits(data, data + n_vocab);
 
         for (int j = 0; j < params.n_ctx - 1; ++j) {
             // Calculate probability of next token, given the previous ones.
