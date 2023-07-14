@@ -633,8 +633,7 @@ struct llama_server_context
                 }
 
                 if (llama_eval(ctx, tokens.data() + batch_start, batch_size, j * n_batch, params.n_threads)) {
-                    fprintf(stderr, "%s : failed to eval\n", __func__);
-                    return;
+                    return -1;
                 }
 
                 // restore the original token in case it was set to BOS
