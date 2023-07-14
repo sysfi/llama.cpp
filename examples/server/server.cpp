@@ -598,7 +598,7 @@ struct llama_server_context
         return probs;
     }
 
-    void perplexity() {
+    double perplexity() {
         auto tokens = ::llama_tokenize(ctx, params.prompt, true);
 
         int count   = 0;
@@ -608,6 +608,7 @@ struct llama_server_context
         const int n_batch = params.n_batch;
 
         double nll = 0.0;
+        double perplexity_value = 0.0;
 
         for (int i = 0; i < n_chunk; ++i) {
             const int start =     i * params.n_ctx;
@@ -647,13 +648,11 @@ struct llama_server_context
 
             if (i == 0) {
                 const float t_total = std::chrono::duration<float>(t_end - t_start).count();
-                fprintf(stderr, "%s: %.2f seconds per pass - ETA ", __func__, t_total);
                 int total_seconds = (int)(t_total * n_chunk);
                 if (total_seconds >= 60*60) {
                     fprintf(stderr, "%d hours ", total_seconds / (60*60));
                     total_seconds = total_seconds % (60*60);
                 }
-                fprintf(stderr, "%d minutes\n", total_seconds / 60);
             }
 
             for (int j = 0; j < params.n_ctx - 1; ++j) {
@@ -668,9 +667,9 @@ struct llama_server_context
                 ++count;
             }
             // perplexity is e^(average negative log-likelihood)
-            printf("[%d]%.4lf,", i + 1, std::exp(nll / count));
-            fflush(stdout);
+            perplexity_value = std::exp(nll / count);
         }
+        return perplexity_value;
     }
 
 
@@ -1001,9 +1000,8 @@ static json format_embedding_response(llama_server_context &llama)
 
 static json format_logits_response(llama_server_context &llama)
 {
-    llama.perplexity();
     return json{
-        {"logits", "test"},
+        {"logits", llama.perplexity()},
     };
 }
 
