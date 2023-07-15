@@ -47,8 +47,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
         int count = 0;
 
-        const int n_tokens = tokens.size();
-        const int n_chunk = 1;
+        const int n_chunk = tokens.size() / params.n_ctx;
         const int n_vocab = llama_n_vocab(ctx);
         const int n_batch = params.n_batch;
 
@@ -103,7 +102,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
                 fprintf(stderr, "%d minutes\n", total_seconds / 60);
             }
 
-            for (int j = 0; j < params.n_ctx - 1; ++j) {
+            for (int j = 1; j < params.n_ctx - 1; ++j) {
                 // Calculate probability of next token, given the previous ones.
                 const std::vector<float> tok_logits(
                     logits.begin() + (j + 0) * n_vocab,
