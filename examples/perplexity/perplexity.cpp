@@ -70,16 +70,16 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
         std::vector<float> logits;
         
-
-        if (llama_eval(ctx, tokens.data() + questionTokenLength, n_batch - questionTokenLength, 0, params.n_threads)) {
+        const int batch_size = n_batch - questionTokenLength;
+        if (llama_eval(ctx, tokens.data() + questionTokenLength, batch_size, 0, params.n_threads)) {
             fprintf(stderr, "%s : failed to eval\n", __func__);
             return;
         }
 
         const auto batch_logits = llama_get_logits(ctx);
-        logits.insert(logits.end(), batch_logits, batch_logits + n_batch * n_vocab);
+        logits.insert(logits.end(), batch_logits, batch_logits + batch_size * n_vocab);
 
-        for (int j = 0; j < n_batch - 1; ++j) {
+        for (int j = 0; j < n_contx - 1; ++j) {
             // Calculate probability of next token, given the previous ones.
             const std::vector<float> tok_logits(
                 logits.begin() + (j + 0) * n_vocab,
