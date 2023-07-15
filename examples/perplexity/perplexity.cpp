@@ -61,66 +61,47 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
         int count = 0;
 
         const int n_contx = tokens.size();
-        const int n_chunk = 1;
-        const int n_vocab = llama_n_vocab(ctx);
         const int n_batch = tokens.size();
+=       const int n_vocab = llama_n_vocab(ctx);
 
         double nll = 0.0;
 
         fprintf(stderr, "%s: calculating perplexity, tokens=%d\n", __func__, n_batch);
 
-        for (int i = 0; i < n_chunk; ++i) {
-            const int start =     i * n_contx;
-            const int end   = start + n_contx;
+        std::vector<float> logits;
 
-            const int num_batches = (n_contx + n_batch - 1) / n_batch;
+        const int batch_start = questionTokenLength;
+        const int batch_size  = n_contx - batch_start;
 
-            std::vector<float> logits;
-
-            for (int j = 0; j < num_batches; ++j) {
-                const int batch_start = start + j * n_batch;
-                const int batch_size  = std::min(end - batch_start, n_batch);
-
-                // save original token and restore it after eval
-                const auto token_org = tokens[batch_start];
-
-                // add BOS token for the first batch of each chunk
-                if (j == 0) {
-                    tokens[batch_start] = llama_token_bos();
-                }
-
-                if (llama_eval(ctx, tokens.data() + batch_start, batch_size, j * n_batch, params.n_threads)) {
-                    fprintf(stderr, "%s : failed to eval\n", __func__);
-                    return;
-                }
-
-                // restore the original token in case it was set to BOS
-                tokens[batch_start] = token_org;
-
-                const auto batch_logits = llama_get_logits(ctx);
-                logits.insert(logits.end(), batch_logits, batch_logits + batch_size * n_vocab);
-            }
-
-            for (int j = questionTokenLength - 1; j < n_contx - 1; ++j) {
-                // Calculate probability of next token, given the previous ones.
-                const std::vector<float> tok_logits(
-                    logits.begin() + (j + 0) * n_vocab,
-                    logits.begin() + (j + 1) * n_vocab);
-
-                // Correct way
-                // const float prob = softmax(tok_logits)[tokens[start + j + 1]];
-                // nll += -std::log(prob);
-
-                // Less ops, incorrect but faster
-                const float prob = tok_logits[tokens[start + j + 1]];
-                nll += -prob;
-
-                ++count;
-            }
-            // perplexity is e^(average negative log-likelihood)
-            double perplexity = std::exp(nll / count);
-            outputFile << perplexity << std::endl;
+        if (llama_eval(ctx, tokens.data() + batch_start, batch_size, j * n_batch, params.n_threads)) {
+            fprintf(stderr, "%s : failed to eval\n", __func__);
+            return;
         }
+
+        const auto batch_logits = llama_get_logits(ctx);
+        logits.insert(logits.end(), batch_logits, batch_logits + batch_size * n_vocab);
+        
+
+        for (int j = 0; j < batch_size - 1; ++j) {
+            // Calculate probability of next token, given the previous ones.
+            const std::vector<float> tok_logits(
+                logits.begin() + (j + 0) * n_vocab,
+                logits.begin() + (j + 1) * n_vocab);
+
+            // Correct way
+            // const float prob = softmax(tok_logits)[tokens[start + j + 1]];
+            // nll += -std::log(prob);
+
+            // Less ops, incorrect but faster
+            const float prob = tok_logits[tokens[start + j + 1]];
+            nll += -prob;
+
+            ++count;
+        }
+        // perplexity is e^(average negative log-likelihood)
+        double perplexity = std::exp(nll / count);
+        outputFile << perplexity << std::endl;
+        
     }
     inputFile.close();
     outputFile.close();
