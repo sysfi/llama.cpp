@@ -601,32 +601,15 @@ struct llama_server_context
         return probs;
     }
 
-    double perplexity() {
-        int count = 0;
-
+    std::vector<float> getLogits()
+    {
         const int n_vocab = llama_n_vocab(ctx);
-        const int n_batch = params.n_batch;
+        const int n_contx = params.n_ctx;
+        std::vector<float> logits;
 
-        double nll = 0.0;
-        double perplexity_value = 0.0;
-
-        const float *data = llama_get_logits(ctx);
-        std::vector<float> logits(data, data + n_vocab);
-
-        for (int j = 0; j < params.n_ctx - 1; ++j) {
-            // Calculate probability of next token, given the previous ones.
-            const std::vector<float> tok_logits(
-                logits.begin() + (j + 0) * n_vocab,
-                logits.begin() + (j + 1) * n_vocab);
-
-            const float prob = softmax(tok_logits)[prompt_tokens[j + 1]];
-
-            nll += -std::log(prob);
-            ++count;
-        }
-        // perplexity is e^(average negative log-likelihood)
-        perplexity_value = std::exp(nll / count);
-        return perplexity_value;
+        const auto batch_logits = llama_get_logits(ctx);
+        logits.insert(logits.end(), batch_logits, batch_logits + n_contx * n_vocab);
+        return logits;
     }
 
 
@@ -958,7 +941,7 @@ static json format_embedding_response(llama_server_context &llama)
 static json format_logits_response(llama_server_context &llama)
 {
     return json{
-        {"logits", llama.perplexity()},
+        {"logits", llama.getLogits()},
     };
 }
 
@@ -1327,9 +1310,9 @@ int main(int argc, char **argv)
         llama_reset_timings(llama.ctx);
         llama.params.prompt = body.value("content", "");
         llama.params.n_predict = 0;
-        // llama.loadPrompt();
-        // llama.beginCompletion();
-        // llama.doCompletion();
+        llama.loadPrompt();
+        llama.beginCompletion();
+        llama.doCompletion();
 
         const json data = format_logits_response(llama);
         return res.set_content(data.dump(), "application/json"); });
