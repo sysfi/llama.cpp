@@ -61,7 +61,8 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
         std::vector<float> logits;
         
-        if (llama_eval(ctx, tokens.data(), n_batch, 0, params.n_threads)) {
+
+        if (llama_eval(ctx, tokens.data() + 10, n_batch - 10, 0, params.n_threads)) {
             fprintf(stderr, "%s : failed to eval\n", __func__);
             return;
         }
@@ -70,7 +71,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
         logits.insert(logits.end(), batch_logits, batch_logits + n_batch * n_vocab);
 
 
-        for (int j = 0; j < n_contx - 1; ++j) {
+        for (int j = 0; j < n_batch - 1; ++j) {
             // Calculate probability of next token, given the previous ones.
             const std::vector<float> tok_logits(
                 logits.begin() + (j + 0) * n_vocab,
@@ -78,7 +79,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
             //const float prob = softmax(tok_logits)[tokens[start + j + 1]];
             const float prob = tok_logits[tokens[j + 1]];
-            nll += prob;
+            nll += -prob;
 
             //nll += -std::log(prob);
             ++count;
