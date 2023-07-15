@@ -188,11 +188,26 @@ int main(int argc, char** argv) {
     }
 
     for (const auto& prompt : prompts) {
+        double nll = 0.0;
+        int count = 0;
+
         perplexity(ctx, params, prompt);
+
+        // Calculate perplexity using the updated values of nll and count
+        for (int i = 0; i < n_chunk; ++i) {
+            // ...
+            for (int j = std::min(512, params.n_ctx / 2); j < params.n_ctx - 1; ++j) {
+                // ...
+                nll += -std::log(prob);
+                ++count;
+            }
+        }
+
         perplexityFile << std::exp(nll / count) << std::endl;
     }
 
     perplexityFile.close();
+
 
     llama_print_timings(ctx);
     llama_free(ctx);
