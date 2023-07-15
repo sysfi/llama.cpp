@@ -62,7 +62,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
         const int n_contx = tokens.size();
         const int n_batch = tokens.size();
-=       const int n_vocab = llama_n_vocab(ctx);
+        const int n_vocab = llama_n_vocab(ctx);
 
         double nll = 0.0;
 
