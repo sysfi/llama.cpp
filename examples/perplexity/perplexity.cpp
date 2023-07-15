@@ -67,7 +67,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
         double nll = 0.0;
 
-        fprintf(stderr, "%s: calculating perplexity, tokens=%d\n", __func__, n_batch);
+        fprintf(stdout, "%s: calculating perplexity, tokens=%d\n", __func__, n_batch);
 
         for (int i = 0; i < n_chunk; ++i) {
             const int start =     i * n_contx;
