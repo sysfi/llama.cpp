@@ -28,22 +28,33 @@ std::vector<float> softmax(const std::vector<float>& logits) {
     return probs;
 }
 
-void perplexity(llama_context *ctx, const gpt_params &params, const std::string &promptsFile) {
+void perplexity(llama_context *ctx, const gpt_params &params, const std::string &promptsFile, const std::string &questionFile, const std::string &perplexityFile) {
     std::ifstream inputFile(promptsFile);
     if (!inputFile.is_open()) {
         fprintf(stderr, "Failed to open prompts file: %s\n", promptsFile.c_str());
         return;
     }
 
-    std::ofstream outputFile("/kaggle/working/perplexity.txt");
+    std::ifstream questionInputFile(questionFile);
+    if (!questionInputFile.is_open()) {
+        fprintf(stderr, "Failed to open question file: %s\n", questionFile.c_str());
+        promptsInputFile.close();
+        return;
+    }
+
+    std::ofstream outputFile(perplexityFile);
     if (!outputFile.is_open()) {
         fprintf(stderr, "Failed to open output file: /kaggle/working/perplexity.txt\n");
         return;
     }
 
     std::string prompt;
-    while (std::getline(inputFile, prompt)) {
+    std::string question;
+
+    while (std::getline(promptsInputFile, prompt) && std::getline(questionInputFile, question)) {
         auto tokens = ::llama_tokenize(ctx, prompt, true);
+        auto questionTokens = ::llama_tokenize(ctx, question, true);
+        int questionTokenLength = questionTokens.size();
 
         int count = 0;
 
@@ -103,7 +114,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
                 fprintf(stderr, "%d minutes\n", total_seconds / 60);
             }
 
-            for (int j = 1; j < n_contx - 1; ++j) {
+            for (int j = questionTokenLength - 1; j < n_contx - 1; ++j) {
                 // Calculate probability of next token, given the previous ones.
                 const std::vector<float> tok_logits(
                     logits.begin() + (j + 0) * n_vocab,
@@ -171,7 +182,7 @@ int main(int argc, char ** argv) {
                 params.n_threads, std::thread::hardware_concurrency(), llama_print_system_info());
     }
 
-    perplexity(ctx, params, "/kaggle/working/prompts.txt");
+    perplexity(ctx, params, "/kaggle/working/prompts.txt", "/kaggle/working/question.txt", "/kaggle/working/perplexity.txt");
 
     llama_print_timings(ctx);
     llama_free(ctx);
