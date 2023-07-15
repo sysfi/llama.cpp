@@ -70,7 +70,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
         std::vector<float> logits;
 
-        const int batch_start = questionTokenLength;
+        const int batch_start = questionTokenLength - 1;
         const int batch_size  = n_contx - batch_start;
 
         if (llama_eval(ctx, tokens.data() + batch_start, batch_size, 0, params.n_threads)) {
