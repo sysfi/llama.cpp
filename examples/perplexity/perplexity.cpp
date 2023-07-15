@@ -53,7 +53,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
     std::string prompt;
     std::string question;
 
-    while (std::getline(promptsInputFile, prompt) && std::getline(questionInputFile, question)) {
+    while (std::getline(inputFile, prompt) && std::getline(questionInputFile, question)) {
         auto tokens = ::llama_tokenize(ctx, prompt, true);
         auto questionTokens = ::llama_tokenize(ctx, question, true);
         int questionTokenLength = questionTokens.size();
