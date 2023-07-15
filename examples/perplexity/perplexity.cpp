@@ -94,7 +94,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
                     return;
                 }
 
-                llama_reset_timings(ctx);
+                // llama_reset_timings(ctx);
 
                 // restore the original token in case it was set to BOS
                 tokens[batch_start] = token_org;
