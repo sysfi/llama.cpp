@@ -98,10 +98,15 @@ void perplexity(llama_context* ctx, const gpt_params& params, const std::string&
 }
 
 int main(int argc, char** argv) {
+    if (argc < 3) {
+        std::cerr << "Usage: ./perplexity <model-params> <input-file>" << std::endl;
+        return 1;
+    }
+
     gpt_params params;
 
     params.n_batch = 512;
-    if (gpt_params_parse(argc, argv, params) == false) {
+    if (gpt_params_parse(argc - 1, argv + 1, params) == false) {
         return 1;
     }
 
@@ -145,7 +150,7 @@ int main(int argc, char** argv) {
             params.n_threads, std::thread::hardware_concurrency(), llama_print_system_info());
     }
 
-    perplexity(ctx, params, "prompts.txt");
+    perplexity(ctx, params, argv[2]);
 
     llama_print_timings(ctx);
     llama_free(ctx);
