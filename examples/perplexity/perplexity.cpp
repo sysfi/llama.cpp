@@ -73,7 +73,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
         const int batch_start = questionTokenLength;
         const int batch_size  = n_contx - batch_start;
 
-        if (llama_eval(ctx, tokens.data() + batch_start, batch_size, j * n_batch, params.n_threads)) {
+        if (llama_eval(ctx, tokens.data() + batch_start, batch_size, 0, params.n_threads)) {
             fprintf(stderr, "%s : failed to eval\n", __func__);
             return;
         }
