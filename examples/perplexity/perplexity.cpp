@@ -61,12 +61,11 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
         int count = 0;
 
         const int n_contx = tokens.size();
-        const int n_batch = tokens.size();
         const int n_vocab = llama_n_vocab(ctx);
 
         double nll = 0.0;
 
-        fprintf(stderr, "%s: calculating perplexity, tokens=%d\n", __func__, n_batch);
+        fprintf(stderr, "%s: calculating perplexity, tokens=%d\n", __func__, n_contx);
 
         std::vector<float> logits;
 
@@ -99,7 +98,8 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
             ++count;
         }
         // perplexity is e^(average negative log-likelihood)
-        double perplexity = std::exp(nll / count);
+        // double perplexity = std::exp(nll / count);
+        double perplexity = nll / count;
         outputFile << perplexity << std::endl;
         
     }
