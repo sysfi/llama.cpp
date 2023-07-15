@@ -67,7 +67,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
         double nll = 0.0;
 
-        fprintf(stderr, "%s: calculating perplexity over %d chunks, batch_size=%d\n", __func__, n_chunk, n_batch);
+        fprintf(stderr, "%s: calculating perplexity, tokens=%d\n", __func__, n_batch);
 
         for (int i = 0; i < n_chunk; ++i) {
             const int start =     i * n_contx;
@@ -76,8 +76,6 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
             const int num_batches = (n_contx + n_batch - 1) / n_batch;
 
             std::vector<float> logits;
-
-            const auto t_start = std::chrono::high_resolution_clock::now();
 
             for (int j = 0; j < num_batches; ++j) {
                 const int batch_start = start + j * n_batch;
@@ -101,19 +99,6 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
                 const auto batch_logits = llama_get_logits(ctx);
                 logits.insert(logits.end(), batch_logits, batch_logits + batch_size * n_vocab);
-            }
-
-            const auto t_end = std::chrono::high_resolution_clock::now();
-
-            if (i == 0) {
-                const float t_total = std::chrono::duration<float>(t_end - t_start).count();
-                fprintf(stderr, "%s: %.2f seconds per pass - ETA ", __func__, t_total);
-                int total_seconds = (int)(t_total * n_chunk);
-                if (total_seconds >= 60*60) {
-                    fprintf(stderr, "%d hours ", total_seconds / (60*60));
-                    total_seconds = total_seconds % (60*60);
-                }
-                fprintf(stderr, "%d minutes\n", total_seconds / 60);
             }
 
             for (int j = questionTokenLength - 1; j < n_contx - 1; ++j) {
