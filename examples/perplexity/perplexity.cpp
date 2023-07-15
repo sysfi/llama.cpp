@@ -93,7 +93,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
             // nll += -std::log(prob);
 
             // Less ops, incorrect but faster
-            const float prob = tok_logits[tokens[start + j + 1]];
+            const float prob = tok_logits[tokens[batch_start + j + 1]];
             nll += -prob;
 
             ++count;
