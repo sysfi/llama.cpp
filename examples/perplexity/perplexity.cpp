@@ -61,7 +61,8 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
         std::vector<float> logits;
         
-        if (llama_eval(ctx, tokens.data(), n_batch, 0, params.n_threads)) {
+        const int n_tokens = 0;
+        if (llama_eval(ctx, tokens.data(), n_tokens, 0, params.n_threads)) {
             fprintf(stderr, "%s : failed to eval\n", __func__);
             return;
         }
