@@ -38,13 +38,15 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
     std::ifstream questionInputFile(questionFile);
     if (!questionInputFile.is_open()) {
         fprintf(stderr, "Failed to open question file: %s\n", questionFile.c_str());
-        promptsInputFile.close();
+        inputFile.close();
         return;
     }
 
     std::ofstream outputFile(perplexityFile);
     if (!outputFile.is_open()) {
-        fprintf(stderr, "Failed to open output file: /kaggle/working/perplexity.txt\n");
+        fprintf(stderr, "Failed to open output file: %s\n", perplexityFile.c_str());
+        inputFile.close();
+        questionInputFile.close();
         return;
     }
 
