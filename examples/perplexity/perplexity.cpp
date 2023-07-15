@@ -111,13 +111,13 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
                 //const float prob = softmax(tok_logits)[tokens[start + j + 1]];
                 const float prob = tok_logits[tokens[start + j + 1]];
-                nll += prob;
+                nll += -prob;
 
                 //nll += -std::log(prob);
                 ++count;
             }
             // perplexity is e^(average negative log-likelihood)
-            double perplexity = std::exp(nll / count);
+            double perplexity = nll / count;
             outputFile << perplexity << std::endl;
         }
     }
