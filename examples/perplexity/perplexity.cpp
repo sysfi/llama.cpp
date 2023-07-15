@@ -140,7 +140,7 @@ int main(int argc, char ** argv) {
                 params.n_threads, std::thread::hardware_concurrency(), llama_print_system_info());
     }
 
-    perplexity(ctx, params, "/kaggle/working/prompts.txt", "/kaggle/working/question.txt", "/kaggle/working/perplexity.txt");
+    perplexity(ctx, params, "/kaggle/working/prompts.txt", "/kaggle/working/perplexity.txt");
 
     llama_print_timings(ctx);
     llama_free(ctx);
