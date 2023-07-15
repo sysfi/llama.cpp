@@ -47,7 +47,8 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
         int count = 0;
 
-        const int n_chunk = tokens.size() / params.n_ctx;
+        const int n_tokens = tokens.size();
+        const int n_chunk = 0;
         const int n_vocab = llama_n_vocab(ctx);
         const int n_batch = params.n_batch;
 
@@ -102,19 +103,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
                 fprintf(stderr, "%d minutes\n", total_seconds / 60);
             }
 
-            // We get the logits for all the tokens in the context window (params.n_ctx)
-            // from llama_eval above.  Now, based on https://huggingface.co/docs/transformers/perplexity,
-            // calculate the perplexity over the last half of the window (so the model always has
-            // some context to predict the token).
-            //
-            // We rely on the fact that attention in the forward pass only looks at previous
-            // tokens here, so the logits returned for each token are an accurate representation
-            // of what the model would have predicted at that point.
-            //
-            // Example, we have a context window of 512, we will compute perplexity for each of the
-            // last 256 tokens.  Then, we split the input up into context window size chunks to
-            // process the entire prompt.
-            for (int j = std::min(512, params.n_ctx / 2); j < params.n_ctx - 1; ++j) {
+            for (int j = 0; j < params.n_ctx - 1; ++j) {
                 // Calculate probability of next token, given the previous ones.
                 const std::vector<float> tok_logits(
                     logits.begin() + (j + 0) * n_vocab,
