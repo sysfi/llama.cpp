@@ -56,7 +56,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
     while (std::getline(inputFile, prompt) && std::getline(questionInputFile, question)) {
         auto tokens = ::llama_tokenize(ctx, prompt, true);
 
-        const int n_contx = 2048;
+        const int n_contx = tokens.size();
         const int n_vocab = llama_n_vocab(ctx);
 
         double nll = 0.0;
@@ -65,7 +65,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
 
         std::vector<float> logits;
 
-        if (llama_eval(ctx, tokens.data(), n_contx, 0, params.n_threads)) {
+        if (llama_eval(ctx, tokens.data(), 2048, 0, params.n_threads)) {
             fprintf(stderr, "%s : failed to eval\n", __func__);
             return;
         }
