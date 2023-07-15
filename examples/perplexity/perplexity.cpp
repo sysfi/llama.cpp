@@ -107,10 +107,8 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
                     logits.begin() + (j + 0) * n_vocab,
                     logits.begin() + (j + 1) * n_vocab);
 
-                
 
-                //const float prob = softmax(tok_logits)[tokens[start + j + 1]];
-                const float prob = tok_logits[tokens[start + j + 1]];
+                const float prob = softmax(tok_logits)[tokens[start + j + 1]];
                 nll += prob;
 
                 //nll += -std::log(prob);
