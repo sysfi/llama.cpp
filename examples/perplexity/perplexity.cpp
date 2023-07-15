@@ -5,9 +5,8 @@
 #include <cmath>
 #include <ctime>
 #include <fstream>
-#include <iostream>
-#include <sstream>
 #include <vector>
+#include <string>
 
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4267) // possible loss of data
@@ -29,34 +28,45 @@ std::vector<float> softmax(const std::vector<float>& logits) {
     return probs;
 }
 
-void perplexity(llama_context* ctx, const gpt_params& params, const std::string& inputFilePath) {
-    std::ifstream inputFile(inputFilePath);
-    if (!inputFile.is_open()) {
-        std::cerr << "Failed to open input file: " << inputFilePath << std::endl;
-        return;
-    }
-
+std::vector<std::string> readPromptsFromFile(const std::string& filename) {
+    std::ifstream file(filename);
+    std::vector<std::string> prompts;
     std::string line;
-    int promptCount = 0;
+    while (std::getline(file, line)) {
+        prompts.push_back(line);
+    }
+    return prompts;
+}
+
+void perplexity(llama_context* ctx, const gpt_params& params, const std::string& prompt) {
+    // Download: https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-2-raw-v1.zip?ref=salesforce-research
+    // Run `./perplexity -m models/7B/ggml-model-q4_0.bin -f wiki.test.raw`
+    // Output: `perplexity: 13.5106 [114/114]`
+    // BOS tokens will be added for each chunk before eval
+    auto tokens = ::llama_tokenize(ctx, prompt, true);
+
+    int count   = 0;
+
+    const int n_chunk = tokens.size() / params.n_ctx;
+    const int n_vocab = llama_n_vocab(ctx);
+    const int n_batch = params.n_batch;
 
     double nll = 0.0;
-    int count = 0;
+    fprintf(stderr, "%s: calculating perplexity over %d chunks, batch_size=%d\n", __func__, n_chunk, n_batch);
 
-    while (std::getline(inputFile, line)) {
-        promptCount++;
-        auto tokens = ::llama_tokenize(ctx, line, true);
+    for (int i = 0; i < n_chunk; ++i) {
+        const int start =     i * params.n_ctx;
+        const int end   = start + params.n_ctx;
 
-        const int n_vocab = llama_n_vocab(ctx);
-        const int n_batch = params.n_batch;
-
-        const int n_ctx = tokens.size();
-        const int num_batches = (n_ctx + n_batch - 1) / n_batch;
+        const int num_batches = (params.n_ctx + n_batch - 1) / n_batch;
 
         std::vector<float> logits;
 
+        const auto t_start = std::chrono::high_resolution_clock::now();
+
         for (int j = 0; j < num_batches; ++j) {
-            const int batch_start = j * n_batch;
-            const int batch_size = std::min(n_ctx - batch_start, n_batch);
+            const int batch_start = start + j * n_batch;
+            const int batch_size  = std::min(end - batch_start, n_batch);
 
             // save original token and restore it after eval
             const auto token_org = tokens[batch_start];
@@ -78,35 +88,54 @@ void perplexity(llama_context* ctx, const gpt_params& params, const std::string&
             logits.insert(logits.end(), batch_logits, batch_logits + batch_size * n_vocab);
         }
 
-        for (int j = std::min(512, n_ctx / 2); j < n_ctx - 1; ++j) {
+        const auto t_end = std::chrono::high_resolution_clock::now();
+
+        if (i == 0) {
+            const float t_total = std::chrono::duration<float>(t_end - t_start).count();
+            fprintf(stderr, "%s: %.2f seconds per pass - ETA ", __func__, t_total);
+            int total_seconds = (int)(t_total * n_chunk);
+            if (total_seconds >= 60*60) {
+                fprintf(stderr, "%d hours ", total_seconds / (60*60));
+                total_seconds = total_seconds % (60*60);
+            }
+            fprintf(stderr, "%d minutes\n", total_seconds / 60);
+        }
+
+        // We get the logits for all the tokens in the context window (params.n_ctx)
+        // from llama_eval above.  Now, based on https://huggingface.co/docs/transformers/perplexity,
+        // calculate the perplexity over the last half of the window (so the model always has
+        // some context to predict the token).
+        //
+        // We rely on the fact that attention in the forward pass only looks at previous
+        // tokens here, so the logits returned for each token are an accurate representation
+        // of what the model would have predicted at that point.
+        //
+        // Example, we have a context window of 512, we will compute perplexity for each of the
+        // last 256 tokens.  Then, we split the input up into context window size chunks to
+        // process the entire prompt.
+        for (int j = std::min(512, params.n_ctx / 2); j < params.n_ctx - 1; ++j) {
             // Calculate probability of next token, given the previous ones.
             const std::vector<float> tok_logits(
                 logits.begin() + (j + 0) * n_vocab,
                 logits.begin() + (j + 1) * n_vocab);
 
-            const float prob = softmax(tok_logits)[tokens[j + 1]];
+            const float prob = softmax(tok_logits)[tokens[start + j + 1]];
 
             nll += -std::log(prob);
             ++count;
         }
-
-        double perplexity = std::exp(nll / count);
-        std::cout << "Prompt " << promptCount << " Perplexity: " << perplexity << std::endl;
+        // perplexity is e^(average negative log-likelihood)
+        printf("[%d]%.4lf,", i + 1, std::exp(nll / count));
+        fflush(stdout);
     }
-
-    inputFile.close();
+    printf("\n");
 }
 
 int main(int argc, char** argv) {
-    if (argc < 3) {
-        std::cerr << "Usage: ./perplexity <model-params> <input-file>" << std::endl;
-        return 1;
-    }
-
     gpt_params params;
 
     params.n_batch = 512;
-    if (gpt_params_parse(argc - 1, argv + 1, params) == false) {
+    if (gpt_params_parse(argc, argv, params) == false) {
         return 1;
     }
 
@@ -115,7 +144,7 @@ int main(int argc, char** argv) {
 
     if (params.n_ctx > 2048) {
         fprintf(stderr, "%s: warning: model might not support context sizes greater than 2048 tokens (%d specified);"
-            "expect poor results\n", __func__, params.n_ctx);
+                "expect poor results\n", __func__, params.n_ctx);
     }
 
     fprintf(stderr, "%s: build = %d (%s)\n", __func__, BUILD_NUMBER, BUILD_COMMIT);
@@ -147,10 +176,23 @@ int main(int argc, char** argv) {
     {
         fprintf(stderr, "\n");
         fprintf(stderr, "system_info: n_threads = %d / %d | %s\n",
-            params.n_threads, std::thread::hardware_concurrency(), llama_print_system_info());
+                params.n_threads, std::thread::hardware_concurrency(), llama_print_system_info());
     }
 
-    perplexity(ctx, params, argv[2]);
+    std::vector<std::string> prompts = readPromptsFromFile("/kaggle/working/prompts.txt");
+
+    std::ofstream perplexityFile("/kaggle/working/perplexity.txt");
+    if (!perplexityFile) {
+        fprintf(stderr, "%s: error: unable to create perplexity file\n", __func__);
+        return 1;
+    }
+
+    for (const auto& prompt : prompts) {
+        perplexity(ctx, params, prompt);
+        perplexityFile << std::exp(nll / count) << std::endl;
+    }
+
+    perplexityFile.close();
 
     llama_print_timings(ctx);
     llama_free(ctx);
