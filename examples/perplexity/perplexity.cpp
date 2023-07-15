@@ -116,7 +116,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
                 fprintf(stderr, "%d minutes\n", total_seconds / 60);
             }
 
-            for (int j = questionTokenLength - 1; j < n_contx - 1; ++j) {
+            for (int j = questionTokenLength - 1; j < n_contx; ++j) {
                 // Calculate probability of next token, given the previous ones.
                 const std::vector<float> tok_logits(
                     logits.begin() + (j + 0) * n_vocab,
