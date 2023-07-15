@@ -45,7 +45,7 @@ void perplexity(llama_context *ctx, const gpt_params &params, const std::string 
     std::string prompt;
     std::string question;
 
-    while (std::getline(inputFile, prompt) && std::getline(questionInputFile, question)) {
+    while (std::getline(inputFile, prompt){
         auto tokens = ::llama_tokenize(ctx, prompt, true);
         tokens[0] = llama_token_bos();
 
